@@ -14,3 +14,4 @@ set (SOURCES
 )
 
 add_executable(lumiere ${SOURCES})
+target_link_libraries(lumiere httpapi)
