@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "httpsrv.h"
 
 #define REQUEST_BUFSIZE 4096
@@ -12,11 +13,11 @@
 void respond(HANDLE queue, PHTTP_REQUEST req, int code,
         const char *reason, const char *entity)
 {
-    HTTP_RESPONSE resp = {
-        .StatusCode = code,
-        .pReason = reason,
-        .ReasonLength = strlen(reason),
-    };
+	HTTP_RESPONSE resp;
+	memset(&resp, 0, sizeof(HTTP_RESPONSE));
+	resp.StatusCode = code;
+	resp.pReason = reason;
+	resp.ReasonLength = strlen(reason);
 
     ADD_KNOWN_HEADER(resp, HttpHeaderContentType, "text/html");
 
@@ -37,6 +38,44 @@ void respond(HANDLE queue, PHTTP_REQUEST req, int code,
     }
 }
 
+void respond_file(HANDLE queue, PHTTP_REQUEST req, int code,
+	const char *reason, HANDLE file)
+{
+	HTTP_RESPONSE resp;
+	memset(&resp, 0, sizeof(HTTP_RESPONSE));
+	resp.StatusCode = code;
+	resp.pReason = reason;
+	resp.ReasonLength = strlen(reason);
+
+	ADD_KNOWN_HEADER(resp, HttpHeaderContentType, "text/plain");
+
+	LARGE_INTEGER newp;
+	newp.QuadPart = 0;
+
+	/* Retrieve current file cursor */
+	LARGE_INTEGER oldp;
+	SetFilePointerEx(file, newp, &oldp, FILE_CURRENT);
+
+	HTTP_DATA_CHUNK dataChunk;
+	if (file) {
+		dataChunk.DataChunkType = HttpDataChunkFromFileHandle;
+		dataChunk.FromFileHandle.FileHandle = file;
+		dataChunk.FromFileHandle.ByteRange.StartingOffset.QuadPart = 0;
+		dataChunk.FromFileHandle.ByteRange.Length.QuadPart = HTTP_BYTE_RANGE_TO_EOF;
+		resp.EntityChunkCount = 1;
+		resp.pEntityChunks = &dataChunk;
+	}
+
+	SetFilePointerEx(file, newp, NULL, FILE_BEGIN);
+	DWORD rc = HttpSendHttpResponse(queue, req->RequestId, 0, &resp,
+		NULL, NULL, NULL, 0, NULL, NULL);
+	SetFilePointerEx(file, oldp, NULL, FILE_BEGIN);
+
+	if (rc != NO_ERROR) {
+		printf("HttpSendHttpResponse failed with %lu \n", rc);
+	}
+}
+
 struct server_ctx {
     HANDLE queue;
     const struct route *routes;
@@ -51,7 +90,7 @@ static DWORD loop(struct server_ctx *ctx)
     HTTP_SET_NULL_ID(&rid);
 
     for (;; HTTP_SET_NULL_ID(&rid)) {
-        PHTTP_REQUEST req = (void *)rbuf;
+        PHTTP_REQUEST req = (PHTTP_REQUEST)rbuf;
         RtlZeroMemory(req, REQUEST_BUFSIZE);
 
         ULONG rc = HttpReceiveHttpRequest(ctx->queue, rid, 0, req,
@@ -119,12 +158,13 @@ HANDLE start_server(HANDLE logfile, const struct route *routes, PHANDLE srv)
     for (const struct route *r = routes; r->path; ++r) {
         rc = HttpAddUrl(queue, r->path, NULL);
         if (rc != NO_ERROR) {
-            printf("HttpCreateHttpHandle failed with %lu \n", rc);
+			wprintf(L"%s\n", r->path);
+            printf("HttpAddUrl failed with %lu \n", rc);
             goto err;
         }
     }
 
-    ctx = malloc(sizeof (struct server_ctx));
+    ctx = (struct server_ctx*)malloc(sizeof (struct server_ctx));
     if (!ctx)
         goto err;
 

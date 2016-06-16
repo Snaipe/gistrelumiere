@@ -1,4 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <stdarg.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 #include "print.h"
 #include "panic.h"
@@ -24,12 +28,14 @@ int hprintf(HANDLE h, const char *fmt, ...)
             panic("Could not unlock the global heap lock");
     }
 
-    va_list vl;
-    va_start(vl, fmt);
+	int sz;
+	char *buf = NULL;
+	va_list vl;
+	va_list vlc;
 
-    va_list vlc;
+    va_start(vl, fmt);
     va_copy(vlc, vl);
-    int sz = _vscprintf(fmt, vlc);
+    sz = _vscprintf(fmt, vlc);
     va_end(vlc);
 
     int rc = -1;
@@ -37,7 +43,7 @@ int hprintf(HANDLE h, const char *fmt, ...)
         goto end;
     ++sz;
 
-    char *buf = malloc(sz);
+    buf = (char*)malloc(sz);
     if (!buf)
         goto end;
 
@@ -55,8 +61,9 @@ int hprintf(HANDLE h, const char *fmt, ...)
         rc = written;
     }
     LeaveCriticalSection(&sync);
-
+	
 end:
+	free(buf);
     va_end(vl);
     return rc;
 }

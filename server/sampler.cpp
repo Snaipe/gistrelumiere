@@ -1,15 +1,17 @@
 #include "sampler.h"
 #include "print.h"
 #include "date.h"
+#include "lock_log.h"
+#include "arduino.h"
 
 #define JSON_LOG_FMT                    \
-    "{"                                 \
-        "\"data\": {"                   \
-            "\"counter\": \"%lu\", "    \
-            "\"date\": \"%s\", "        \
-            "\"light\": \"%d\""         \
-        "}"                             \
-    "}\r\n"
+    L"{"                                \
+        L"\"data\": {"                  \
+            L"\"counter\": \"%lu\", "   \
+            L"\"date\": \"%S\", "       \
+            L"\"light\": \"%d\""        \
+        L"}"                            \
+    L"}\r\n"
 
 #define JSON_FILE_FMT                   \
     "{"                                 \
@@ -23,6 +25,8 @@
 
 struct sampler_ctx {
     int sampling;
+	int threshold;
+	int prev_brightness;
     HANDLE stop;
     HANDLE logfile;
     CRITICAL_SECTION sync;
@@ -30,7 +34,7 @@ struct sampler_ctx {
 };
 
 static int get_brightness(void) {
-    return 100;
+    return analogRead(A0);
 }
 
 static void log_brightness(struct sampler_ctx *ctx, int brightness)
@@ -39,15 +43,24 @@ static void log_brightness(struct sampler_ctx *ctx, int brightness)
 
     LONG c = InterlockedIncrement(&counter);
     char date[256];
-    if (!now_fmt("%d/%m/%Y %H:%M:%S:%f", date, sizeof (date)))
+    if (!now_fmt("%d/%m/%Y %H:%M:%S.%f", date, sizeof (date)))
         return;
+	
+    Log(JSON_LOG_FMT, c, date, brightness);
 
-    printf(JSON_LOG_FMT, c, date, brightness);
-    hprintf(ctx->logfile, JSON_FILE_FMT, c, date, brightness);
+	if (!(ctx->prev_brightness < ctx->threshold ^ brightness >= ctx->threshold)) {
+		c = InterlockedIncrement(&counter);
+		lock_log();
+		hprintf(ctx->logfile, JSON_FILE_FMT, c, brightness, brightness >= ctx->threshold ? "ON" : "OFF", date);
+		unlock_log();
+	}
+	ctx->prev_brightness = brightness;
 }
 
-static DWORD loop(struct sampler_ctx *ctx)
+static DWORD __cdecl loop(LPVOID param)
 {
+	struct sampler_ctx *ctx = (struct sampler_ctx*)param;
+
     EnterCriticalSection(&ctx->sync);
     for (;;) {
         if (WaitForSingleObject(ctx->stop, 0) == WAIT_OBJECT_0)
@@ -64,14 +77,17 @@ static DWORD loop(struct sampler_ctx *ctx)
     return 0;
 }
 
-HANDLE start_sampling(HANDLE logfile, int sampling, sampler_t *sampler)
+HANDLE start_sampling(HANDLE logfile, int sampling, int threshold, sampler_t *sampler)
 {
-    struct sampler_ctx *ctx = malloc(sizeof (*ctx));
+    struct sampler_ctx *ctx = (struct sampler_ctx*)malloc(sizeof (*ctx));
     if (!ctx)
         goto err;
 
     ctx->sampling = sampling;
     ctx->stop = CreateEvent(NULL, FALSE, FALSE, NULL);
+	ctx->logfile = logfile;
+	ctx->prev_brightness = get_brightness();
+	ctx->threshold = threshold;
     if (!ctx->stop)
         goto err;
 

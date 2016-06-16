@@ -5,7 +5,7 @@
 
 typedef struct sampler_ctx *sampler_t;
 
-HANDLE start_sampling(HANDLE logfile, int sampling, sampler_t *sampler);
+HANDLE start_sampling(HANDLE logfile, int sampling, int threshold, sampler_t *sampler);
 void shutdown_sampling(sampler_t sampler);
 
 #endif /* !SAMPLER_H_ */
