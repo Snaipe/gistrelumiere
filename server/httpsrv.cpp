@@ -13,11 +13,11 @@
 void respond(HANDLE queue, PHTTP_REQUEST req, int code,
         const char *reason, const char *entity)
 {
-	HTTP_RESPONSE resp;
-	memset(&resp, 0, sizeof(HTTP_RESPONSE));
-	resp.StatusCode = code;
-	resp.pReason = reason;
-	resp.ReasonLength = strlen(reason);
+    HTTP_RESPONSE resp;
+    memset(&resp, 0, sizeof(HTTP_RESPONSE));
+    resp.StatusCode = code;
+    resp.pReason = reason;
+    resp.ReasonLength = strlen(reason);
 
     ADD_KNOWN_HEADER(resp, HttpHeaderContentType, "text/html");
 
@@ -39,41 +39,41 @@ void respond(HANDLE queue, PHTTP_REQUEST req, int code,
 }
 
 void respond_file(HANDLE queue, PHTTP_REQUEST req, int code,
-	const char *reason, HANDLE file)
+    const char *reason, HANDLE file)
 {
-	HTTP_RESPONSE resp;
-	memset(&resp, 0, sizeof(HTTP_RESPONSE));
-	resp.StatusCode = code;
-	resp.pReason = reason;
-	resp.ReasonLength = strlen(reason);
+    HTTP_RESPONSE resp;
+    memset(&resp, 0, sizeof(HTTP_RESPONSE));
+    resp.StatusCode = code;
+    resp.pReason = reason;
+    resp.ReasonLength = strlen(reason);
 
-	ADD_KNOWN_HEADER(resp, HttpHeaderContentType, "text/plain");
+    ADD_KNOWN_HEADER(resp, HttpHeaderContentType, "text/plain");
 
-	LARGE_INTEGER newp;
-	newp.QuadPart = 0;
+    LARGE_INTEGER newp;
+    newp.QuadPart = 0;
 
-	/* Retrieve current file cursor */
-	LARGE_INTEGER oldp;
-	SetFilePointerEx(file, newp, &oldp, FILE_CURRENT);
+    /* Retrieve current file cursor */
+    LARGE_INTEGER oldp;
+    SetFilePointerEx(file, newp, &oldp, FILE_CURRENT);
 
-	HTTP_DATA_CHUNK dataChunk;
-	if (file) {
-		dataChunk.DataChunkType = HttpDataChunkFromFileHandle;
-		dataChunk.FromFileHandle.FileHandle = file;
-		dataChunk.FromFileHandle.ByteRange.StartingOffset.QuadPart = 0;
-		dataChunk.FromFileHandle.ByteRange.Length.QuadPart = HTTP_BYTE_RANGE_TO_EOF;
-		resp.EntityChunkCount = 1;
-		resp.pEntityChunks = &dataChunk;
-	}
+    HTTP_DATA_CHUNK dataChunk;
+    if (file) {
+        dataChunk.DataChunkType = HttpDataChunkFromFileHandle;
+        dataChunk.FromFileHandle.FileHandle = file;
+        dataChunk.FromFileHandle.ByteRange.StartingOffset.QuadPart = 0;
+        dataChunk.FromFileHandle.ByteRange.Length.QuadPart = HTTP_BYTE_RANGE_TO_EOF;
+        resp.EntityChunkCount = 1;
+        resp.pEntityChunks = &dataChunk;
+    }
 
-	SetFilePointerEx(file, newp, NULL, FILE_BEGIN);
-	DWORD rc = HttpSendHttpResponse(queue, req->RequestId, 0, &resp,
-		NULL, NULL, NULL, 0, NULL, NULL);
-	SetFilePointerEx(file, oldp, NULL, FILE_BEGIN);
+    SetFilePointerEx(file, newp, NULL, FILE_BEGIN);
+    DWORD rc = HttpSendHttpResponse(queue, req->RequestId, 0, &resp,
+        NULL, NULL, NULL, 0, NULL, NULL);
+    SetFilePointerEx(file, oldp, NULL, FILE_BEGIN);
 
-	if (rc != NO_ERROR) {
-		printf("HttpSendHttpResponse failed with %lu \n", rc);
-	}
+    if (rc != NO_ERROR) {
+        printf("HttpSendHttpResponse failed with %lu \n", rc);
+    }
 }
 
 struct server_ctx {
@@ -158,7 +158,6 @@ HANDLE start_server(HANDLE logfile, const struct route *routes, PHANDLE srv)
     for (const struct route *r = routes; r->path; ++r) {
         rc = HttpAddUrl(queue, r->path, NULL);
         if (rc != NO_ERROR) {
-			wprintf(L"%s\n", r->path);
             printf("HttpAddUrl failed with %lu \n", rc);
             goto err;
         }

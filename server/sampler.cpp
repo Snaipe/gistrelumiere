@@ -25,8 +25,8 @@
 
 struct sampler_ctx {
     int sampling;
-	int threshold;
-	int prev_brightness;
+    int threshold;
+    int prev_brightness;
     HANDLE stop;
     HANDLE logfile;
     CRITICAL_SECTION sync;
@@ -45,21 +45,21 @@ static void log_brightness(struct sampler_ctx *ctx, int brightness)
     char date[256];
     if (!now_fmt("%d/%m/%Y %H:%M:%S.%f", date, sizeof (date)))
         return;
-	
+    
     Log(JSON_LOG_FMT, c, date, brightness);
 
-	if (!(ctx->prev_brightness < ctx->threshold ^ brightness >= ctx->threshold)) {
-		c = InterlockedIncrement(&counter);
-		lock_log();
-		hprintf(ctx->logfile, JSON_FILE_FMT, c, brightness, brightness >= ctx->threshold ? "ON" : "OFF", date);
-		unlock_log();
-	}
-	ctx->prev_brightness = brightness;
+    if (!(ctx->prev_brightness < ctx->threshold ^ brightness >= ctx->threshold)) {
+        c = InterlockedIncrement(&counter);
+        lock_log();
+        hprintf(ctx->logfile, JSON_FILE_FMT, c, brightness, brightness >= ctx->threshold ? "ON" : "OFF", date);
+        unlock_log();
+    }
+    ctx->prev_brightness = brightness;
 }
 
 static DWORD __cdecl loop(LPVOID param)
 {
-	struct sampler_ctx *ctx = (struct sampler_ctx*)param;
+    struct sampler_ctx *ctx = (struct sampler_ctx*)param;
 
     EnterCriticalSection(&ctx->sync);
     for (;;) {
@@ -85,9 +85,9 @@ HANDLE start_sampling(HANDLE logfile, int sampling, int threshold, sampler_t *sa
 
     ctx->sampling = sampling;
     ctx->stop = CreateEvent(NULL, FALSE, FALSE, NULL);
-	ctx->logfile = logfile;
-	ctx->prev_brightness = get_brightness();
-	ctx->threshold = threshold;
+    ctx->logfile = logfile;
+    ctx->prev_brightness = get_brightness();
+    ctx->threshold = threshold;
     if (!ctx->stop)
         goto err;
 

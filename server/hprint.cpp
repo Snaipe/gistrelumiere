@@ -28,10 +28,10 @@ int hprintf(HANDLE h, const char *fmt, ...)
             panic("Could not unlock the global heap lock");
     }
 
-	int sz;
-	char *buf = NULL;
-	va_list vl;
-	va_list vlc;
+    int sz;
+    char *buf = NULL;
+    va_list vl;
+    va_list vlc;
 
     va_start(vl, fmt);
     va_copy(vlc, vl);
@@ -61,9 +61,9 @@ int hprintf(HANDLE h, const char *fmt, ...)
         rc = written;
     }
     LeaveCriticalSection(&sync);
-	
+    
 end:
-	free(buf);
+    free(buf);
     va_end(vl);
     return rc;
 }

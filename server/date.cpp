@@ -16,7 +16,7 @@ size_t strftime_compat(char *buf, size_t size, const char *fmt, PSYSTEMTIME st)
             continue;
         }
 
-		int n;
+        int n;
         switch (*(++s)) {
         case '%': *(buf++) = '%'; ++i; break;
         case 'm': n = _snprintf(buf, size - i, "%02d", st->wMonth); break;
@@ -36,10 +36,10 @@ size_t strftime_compat(char *buf, size_t size, const char *fmt, PSYSTEMTIME st)
             n = 2;
             break;
         }
-		buf += n;
-		i += n;
+        buf += n;
+        i += n;
     }
-	*buf = 0;
+    *buf = 0;
     return i;
 }
 
