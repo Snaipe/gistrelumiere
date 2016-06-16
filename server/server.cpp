@@ -70,7 +70,7 @@ int main(int argc, const char *argv[])
 			continue;
 
         scanf("%128s", buf);
-        if (!strncmp(buf, "stop", sizeof (buf)))
+        if (!strncmp(buf, "quit", sizeof (buf)))
             break;
     }
 
